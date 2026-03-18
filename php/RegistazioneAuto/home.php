@@ -33,7 +33,10 @@ if (isset($_POST['s']) && isset($_POST["marca"]) && isset($_POST["modello"]) && 
 }
 
 // get the user auto
-$autos = $conn->query("SELECT `id`, `marca`, `modello`, `cilindrata`, `username` FROM `auto` WHERE username='$username'")->fetchAll();
+$stmt = $conn->prepare("SELECT `id`, `marca`, `modello`, `cilindrata`, `username` FROM `auto` WHERE username=:username");
+$stmt->bindParam(":username", $username);
+$stmt->execute();
+$autos = $stmt->fetchAll();
 ?>
 
 <!doctype html>
