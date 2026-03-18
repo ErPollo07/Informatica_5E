@@ -27,6 +27,9 @@ if (isset($_POST['s']) && isset($_POST["marca"]) && isset($_POST["modello"]) && 
     $stmt->bindParam(":cilindrata", $cilindrata);
     $stmt->bindParam(":username", $_SESSION["username"]);
     $stmt->execute();
+
+    header("Location: " . $_SERVER["PHP_SELF"]);
+    die();
 }
 
 // get the user auto
@@ -80,6 +83,9 @@ $autos = $conn->query("SELECT `id`, `marca`, `modello`, `cilindrata`, `username`
                 <?php } ?>
                 </tbody>
             </table>
+            <button>
+                <a href="logout.php">Logout</a>
+            </button>
         </div>
         <div class="col-2"></div>
     </div>
