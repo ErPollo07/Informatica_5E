@@ -14,4 +14,5 @@ try {
 } catch (PDOException $e) {
     die("Errore: " . $e->getMessage());
 }
+
 return $conn;
