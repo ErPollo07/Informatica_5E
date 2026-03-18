@@ -1,5 +1,6 @@
 <?php
 $conn = include "connection.php";
+include "util.php";
 
 session_start();
 
@@ -7,27 +8,26 @@ $error = null;
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Get the username and password from the form
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+    $username = filter_var($_POST['username']);
+    $password = filter_var($_POST['password']);
 
     echo "username: ". $username . "\n";
     echo "Password: ".  $password . "\n";
 
     // Prepare the sql string
-    $query = $conn->prepare("SELECT * FROM utenti WHERE username = :username");
-    // Execute the query
-    $query->execute(['username' => $username]);
+    $stmt = $conn->prepare("SELECT id, username, password, role FROM utenti WHERE username = :username");
+    $stmt->bindParam(":username", $username);
+    $stmt->execute();
 
-    // Get the array of the result from the query
-    $user = $query->fetch();
-
-    echo $user;
+    // Get only one row from the result
+    $user = $stmt->fetch();
 
     // Check if the password is correct (use password_verify() if the password is hashed)
     if ($user && $password == $user['password']) {
         // Put in the session variable the id and username of the user
         $_SESSION["id"] = $user['id'];
         $_SESSION["username"] = $user['username'];
+        $_SESSION["role"] = $user["role"];
 
         header("Location: home.php");
         exit;
@@ -36,6 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
+
 <!doctype html>
 <html lang="en">
 <head>

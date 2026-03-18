@@ -4,32 +4,75 @@ $conn = include 'connection.php';
 session_start();
 
 // Verify if the user is logged in
-if (isset($_SESSION['id']) && isset($_SESSION['username'])) {
+if (isset($_SESSION['id']) && isset($_SESSION['username']) && isset($_SESSION["role"])) {
+    // TODO create a user obj to store all his variables
     $id = $_SESSION['id'];
     $username = $_SESSION['username'];
+    $role = $_SESSION["role"];
 } else {
     // redirect to login page
     header("Location: login.php");
     die();
 }
 
-// Check if the user compiled the form to insert a new auto
-if (isset($_POST['s']) && isset($_POST["marca"]) && isset($_POST["modello"]) && isset($_POST["cilindrata"])) {
-    // Insert a new auto with the fields
-    // First take the values and sanitize them
-    $marca = filter_var($_POST["marca"]);
-    $modello = filter_var($_POST["modello"]);
-    $cilindrata = filter_var($_POST["cilindrata"]);
+// Check if there are some action to do else load the page normally
+if (isset($_POST['action'])) {
+    $action = $_POST["action"];
 
-    $stmt = $conn->prepare("INSERT INTO `auto` (marca, modello, cilindrata, username) VALUES (:marca, :modello, :cilindrata, :username)");
-    $stmt->bindParam(":marca", $marca);
-    $stmt->bindParam(":modello", $modello);
-    $stmt->bindParam(":cilindrata", $cilindrata);
-    $stmt->bindParam(":username", $_SESSION["username"]);
-    $stmt->execute();
+    echo "action = " . $action;
 
-    header("Location: " . $_SERVER["PHP_SELF"]);
-    die();
+    if ($action == "creation" && isset($_POST["marca"]) && isset($_POST["modello"]) && isset($_POST["cilindrata"])) {
+        // Insert a new auto with the fields
+        // First take the values and sanitize them
+        $marca = filter_var($_POST["marca"]);
+        $modello = filter_var($_POST["modello"]);
+        $cilindrata = filter_var($_POST["cilindrata"]);
+
+        $stmt = $conn->prepare("INSERT INTO `auto` (marca, modello, cilindrata, username) VALUES (:marca, :modello, :cilindrata, :username)");
+        $stmt->bindParam(":marca", $marca);
+        $stmt->bindParam(":modello", $modello);
+        $stmt->bindParam(":cilindrata", $cilindrata);
+        $stmt->bindParam(":username", $_SESSION["username"]);
+        $stmt->execute();
+
+        header("Location: " . $_SERVER["PHP_SELF"]);
+        die();
+    }
+    else if ($action == "save_modify" && isset($_POST["auto_id"]) && isset($_POST["marca"]) && isset($_POST["modello"]) && isset($_POST["cilindrata"])) {
+        $auto_id = filter_var($_POST["auto_id"]);
+        $marca = filter_var($_POST["marca"]);
+        $modello = filter_var($_POST["modello"]);
+        $cilindrata = filter_var($_POST["cilindrata"]);
+
+        echo "marca: " . $marca . "\n";
+        echo "modello: " . $modello . "\n";
+        echo "cilindrata: " . $cilindrata . "\n";
+        echo "id: " . $auto_id . "\n";
+        echo "username: " . $username;
+
+        $stmt = $conn->prepare("UPDATE `auto` SET `marca`=:marca, `modello`=:modello, `cilindrata`=:cilindrata WHERE `id`=:auto_id AND `username`=:username");
+        $stmt->bindParam(":marca", $marca);
+        $stmt->bindParam(":modello", $modello);
+        $stmt->bindParam(":cilindrata", $cilindrata);
+        $stmt->bindParam(":auto_id", $auto_id);
+        $stmt->bindParam(":username", $username);
+        $stmt->execute();
+
+        // Reload the page
+        header("Refresh: 5; url=home.php");
+        die();
+    }
+    else if ($action == "delete" && isset($_POST["auto_id"])) {
+        $auto_id = filter_var($_POST["auto_id"]);
+
+        $stmt = $conn->prepare("DELETE FROM `auto` WHERE id = :auto_id AND username = :username");
+        $stmt->bindParam(":auto_id", $auto_id);
+        $stmt->bindParam(":username", $username);
+        $stmt->execute();
+
+        header("Location: home.php");
+        die();
+    }
 }
 
 // get the user auto
@@ -49,16 +92,22 @@ $autos = $stmt->fetchAll();
           integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
 </head>
 <body>
+<style>
+    .icon-btn {
+        border: none;
+    }
+</style>
 <div class="container text-center">
     <h1>Welcome <?= $username ?></h1>
     <div class="row">
         <div class="col-2"></div>
         <div class="col-8">
-            <form action="<?=$_SERVER["PHP_SELF"]?>" method="post">
+            <form action="<?= $_SERVER["PHP_SELF"] ?>" method="post">
+                <input type="hidden" name="action" value="creation">
                 <input type="text" name="marca" placeholder="Marca" required>
                 <input type="text" name="modello" placeholder="Modello" required>
                 <input type="text" name="cilindrata" placeholder="Cilindrata" required>
-                <input type="submit" name="s" value="Invia">
+                <button type="submit">Submit</button>
             </form>
         </div>
         <div class="col-2"></div>
@@ -68,12 +117,12 @@ $autos = $stmt->fetchAll();
         <div class="col-8">
             <table class="table table-striped">
                 <thead>
-                    <tr>
-                        <th scope="col">id</th>
-                        <th scope="col">marca</th>
-                        <th scope="col">modello</th>
-                        <th scope="col">cilindrata</th>
-                    </tr>
+                <tr>
+                    <th scope="col">id</th>
+                    <th scope="col">marca</th>
+                    <th scope="col">modello</th>
+                    <th scope="col">cilindrata</th>
+                </tr>
                 </thead>
                 <tbody>
                 <?php foreach ($autos as $auto) { ?>
@@ -82,6 +131,26 @@ $autos = $stmt->fetchAll();
                         <td><?= $auto['marca'] ?></td>
                         <td><?= $auto['modello'] ?></td>
                         <td><?= $auto['cilindrata'] ?></td>
+                        <?php if ($role == "admin") { ?>
+                            <td>
+                                <form action="modify.php" method="post">
+                                    <input type="hidden" name="action" value="modify"><!-- use for redirection on the same page-->
+                                    <input type="hidden" name="auto_id" value="<?= $auto['id'] ?>">
+                                    <button type="submit" class="icon-btn">
+                                        <img src="./assets/edit_icon.svg" alt="Edit">
+                                    </button>
+                                </form>
+                            </td>
+                            <td>
+                                <form action="<?= $_SERVER['PHP_SELF'] ?>" method="post">
+                                    <input type="hidden" name="action" value="delete">
+                                    <input type="hidden" name="auto_id" value="<?= $auto['id'] ?>">
+                                    <button type="submit" class="icon-btn">
+                                        <img src="./assets/delete_icon.svg" alt="Delete">
+                                    </button>
+                                </form>
+                            </td>
+                        <?php } ?>
                     </tr>
                 <?php } ?>
                 </tbody>
