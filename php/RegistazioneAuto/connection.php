@@ -4,8 +4,6 @@ $dbname = "user_auto";
 $username = "user";
 $password = "user";
 
-
-
 try {
     $conn = new PDO(
         "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
